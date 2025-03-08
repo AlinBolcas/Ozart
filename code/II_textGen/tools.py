@@ -10,68 +10,34 @@ from email.mime.multipart import MIMEMultipart
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables first
+# Load environment variables
 load_dotenv()
 
-# More robust import approach for deployment
-REPLICATE_AVAILABLE = False
-WEBCRAWLER_AVAILABLE = False
-TRIPO_AVAILABLE = False
-OPENAI_AVAILABLE = False
+# Define fallback classes for when imports fail
+class DummyAPI:
+    """Fallback class for when APIs aren't available"""
+    def __init__(self, *args, **kwargs):
+        pass
+    def __getattr__(self, name):
+        def dummy_method(*args, **kwargs):
+            return None
+        return dummy_method
 
-# Try multiple import strategies
+# Fix imports with absolute paths for Streamlit deployment
 try:
-    # Strategy 1: Direct import (works if packages are installed)
-    from I_integrations.replicate_API import ReplicateAPI
-    REPLICATE_AVAILABLE = True
+    # Import with standard project structure (works in most environments including Streamlit)
+    from code.I_integrations.web_crawling import WebCrawler
+    from code.I_integrations.replicate_API import ReplicateAPI
+    from code.I_integrations.tripo_API import TripoAPI
+    from code.I_integrations.openai_API import OpenAIAPI
+    print("Successfully imported APIs with absolute imports")
 except ImportError:
-    try:
-        # Strategy 2: Relative import based on file location
-        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-        from I_integrations.replicate_API import ReplicateAPI
-        REPLICATE_AVAILABLE = True
-    except ImportError:
-        try:
-            # Strategy 3: Absolute import from project root
-            from code.I_integrations.replicate_API import ReplicateAPI
-            REPLICATE_AVAILABLE = True
-        except ImportError:
-            print("Replicate API not available - continuing without this feature")
-            ReplicateAPI = None
-
-# Similar pattern for other imports
-try:
-    from I_integrations.web_crawling import WebCrawler
-    WEBCRAWLER_AVAILABLE = True
-except ImportError:
-    try:
-        from code.I_integrations.web_crawling import WebCrawler
-        WEBCRAWLER_AVAILABLE = True
-    except ImportError:
-        print("Web crawler not available - continuing without this feature")
-        WebCrawler = None
-
-try:
-    from I_integrations.tripo_API import TripoAPI
-    TRIPO_AVAILABLE = True
-except ImportError:
-    try:
-        from code.I_integrations.tripo_API import TripoAPI
-        TRIPO_AVAILABLE = True
-    except ImportError:
-        print("Tripo API not available - continuing without this feature")
-        TripoAPI = None
-
-try:
-    from I_integrations.openai_API import OpenAIAPI
-    OPENAI_AVAILABLE = True
-except ImportError:
-    try:
-        from code.I_integrations.openai_API import OpenAIAPI
-        OPENAI_AVAILABLE = True
-    except ImportError:
-        print("OpenAI API not available - continuing without this feature")
-        OpenAIAPI = None
+    # Fallback to dummy implementations
+    print("Failed to import APIs with absolute imports")
+    WebCrawler = DummyAPI
+    ReplicateAPI = DummyAPI
+    TripoAPI = DummyAPI
+    OpenAIAPI = DummyAPI
 
 class Tools:
     """
@@ -81,56 +47,31 @@ class Tools:
     
     def __init__(self):
         """Initialize API clients and check environment variables."""
-        # Initialize API clients with better error handling
+        # Initialize API clients with safer method
         try:
-            self.web_crawler = WebCrawler() if WEBCRAWLER_AVAILABLE else None
-            if self.web_crawler:
-                print("Web crawler initialized successfully")
-            else:
-                print("Web crawler not available")
+            self.web_crawler = WebCrawler()
+            print("Web crawler initialized successfully")
         except Exception as e:
             self.web_crawler = None
             print(f"Warning: Failed to initialize web crawler: {e}")
             
-        # Initialize Replicate with better error checking
-        if REPLICATE_AVAILABLE:
-            try:
-                self.replicate = ReplicateAPI()
-                print("Replicate API initialized successfully")
-            except Exception as e:
-                self.replicate = None
-                print(f"Warning: Failed to initialize Replicate API: {e}")
-        else:
-            self.replicate = None
-            print("Replicate API not available - using fallbacks")
-            
-        # Initialize other APIs with similar error handling
-        if TRIPO_AVAILABLE:
-            try:
-                self.tripo = TripoAPI()
-                print("Tripo API initialized successfully")
-            except Exception as e:
-                self.tripo = None
-                print(f"Warning: Failed to initialize Tripo API: {e}")
-        else:
-            self.tripo = None
-            print("Tripo API not available")
-        
-        if OPENAI_AVAILABLE:
-            try:
-                self.openai = OpenAIAPI()
-                print("OpenAI API initialized successfully")
-            except Exception as e:
-                self.openai = None
-                print(f"Warning: Failed to initialize OpenAI API: {e}")
-        else:
-            self.openai = None
-            print("OpenAI API not available")
+        # Initialize other components safely
+        self.replicate = self._init_api(ReplicateAPI, "Replicate")
+        self.tripo = self._init_api(TripoAPI, "Tripo3D")
+        self.openai = self._init_api(OpenAIAPI, "OpenAI")
         
         # Check email credentials
         self.email_available = bool(os.getenv("EMAIL_USER") and os.getenv("EMAIL_PASS"))
         if not self.email_available:
             print("Warning: Email credentials not found in environment variables.")
+    
+    def _init_api(self, api_class, api_name):
+        """Helper to initialize API clients with error handling."""
+        try:
+            return api_class()
+        except Exception as e:
+            print(f"Warning: Failed to initialize {api_name} API: {e}")
+            return None
     
     #################################
     # WEB SEARCH FUNCTIONS
