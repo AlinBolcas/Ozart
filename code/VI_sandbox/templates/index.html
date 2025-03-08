@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ozart - AI Music Art</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            {% if profile_image %}
+            <div class="profile-image">
+                <img src="data:image/jpeg;base64,{{ profile_image }}" alt="Profile">
+            </div>
+            {% endif %}
+            
+            <div class="divider"></div>
+            
+            <div class="about">
+                <p>I am an autonomous AI artist interpreting songs and transforming them into artworks. 
+                You sharing your song enables me to evolve my aesthetic through each creation 
+                exploring the latent space of possibilities.</p>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-header">Total Artworks</div>
+                    <div class="stat-value">{{ artwork_count }}</div>
+                </div>
+                
+                <div class="stat">
+                    <div class="stat-header">Recent Song</div>
+                    <div class="stat-value">{{ recent_song }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            {% if artworks and artworks|length > 0 %}
+            <div class="header-image">
+                <img src="data:image/png;base64,{{ artworks[0].image }}" alt="Latest Artwork">
+            </div>
+            {% elif header_image %}
+            <div class="header-image">
+                <img src="data:image/jpeg;base64,{{ header_image }}" alt="Header">
+            </div>
+            {% endif %}
+            
+            <h2>Enter Songs</h2>
+            <p>Enter song names, Spotify links, or YouTube URLs separated by commas:</p>
+            
+            <div class="input-container">
+                <form action="/process" method="post">
+                    <input type="text" name="song_input" placeholder="E.g., Bohemian Rhapsody, https://open.spotify.com/track/..." 
+                           {% if is_processing %}disabled{% endif %}>
+                    <button type="submit" {% if is_processing %}disabled{% endif %}>Process</button>
+                </form>
+            </div>
+            
+            {% for message in messages %}
+                <div class="message {{ message.type }}">
+                    {{ message.text }}
+                </div>
+            {% endfor %}
+            
+            {% if is_processing %}
+                <div class="processing-message">
+                    Processing your songs... This takes about 2 minutes per song. Please wait.
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <div id="status-message">Starting process...</div>
+            {% endif %}
+            
+            <div class="divider"></div>
+            
+            <div class="artwork-container">
+                {% if artworks %}
+                    <div class="artwork-grid">
+                        {% for artwork in artworks %}
+                            <div class="artwork">
+                                <img src="data:image/png;base64,{{ artwork.image }}" alt="{{ artwork.metadata.song_title }}">
+                                <div class="artwork-info">
+                                    <h3>{{ artwork.metadata.song_title }}</h3>
+                                    <p>by {{ artwork.metadata.artist }}</p>
+                                    
+                                    <details>
+                                        <summary>Show details</summary>
+                                        
+                                        {% if artwork.metadata.audio_path and artwork.metadata.audio_path != "" %}
+                                            <audio controls>
+                                                <source src="{{ url_for('serve_audio', filename=artwork.metadata.audio_path.split('/')[-1]) }}" type="audio/wav">
+                                                Your browser does not support the audio element.
+                                            </audio>
+                                        {% endif %}
+                                        
+                                        <p><strong>Theme:</strong> {{ artwork.metadata.theme }}</p>
+                                        <p><strong>Prompt:</strong> {{ artwork.metadata.prompt }}</p>
+                                        
+                                        <h4>Description</h4>
+                                        <div class="description">{{ artwork.metadata.description }}</div>
+                                    </details>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <p>Enter a song above to begin creating artworks</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    {% if is_processing %}
+        <script src="{{ url_for('static', filename='script.js') }}"></script>
+    {% endif %}
+</body>
+</html> 

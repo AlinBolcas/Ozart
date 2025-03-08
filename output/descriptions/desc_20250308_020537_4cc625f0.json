@@ -1,0 +1,12 @@
+{
+  "song_title": "Beggin'",
+  "artist": "Frankie Valli & The Four Seasons",
+  "theme": "Music Visualization",
+  "image_prompt": "Create a visual representation of the song 'Beggin'' by Frankie Valli & The Four Seasons. \"Unknown Song\" by Frankie Valli & The Four Seasons evokes a sense of nostalgia, marked by its warm, inviting melodies. The song\u2019s consistent pitch creates a soothing atmosphere, while its subtle dynamics maintain a steady emotional flow, allowing listeners to easily connect with its heartfelt sentiment. \n\nDistinctively, the smooth timbre combined with a lack of harmonic complexity enhances the song's simplicity, emphasizing Valli\u2019s expressive vocal delivery. The energy shifts are subtle but impa",
+  "description": "\"Unknown Song\" by Frankie Valli & The Four Seasons evokes a sense of nostalgia, marked by its warm, inviting melodies. The song\u2019s consistent pitch creates a soothing atmosphere, while its subtle dynamics maintain a steady emotional flow, allowing listeners to easily connect with its heartfelt sentiment. \n\nDistinctively, the smooth timbre combined with a lack of harmonic complexity enhances the song's simplicity, emphasizing Valli\u2019s expressive vocal delivery. The energy shifts are subtle but impactful, with moments of heightened intensity that draw listeners deeper into the emotional landscape, contrasting with softer passages that evoke introspection. Overall, this piece embodies a blend of warmth and yearning, characteristic of Valli's timeless style.",
+  "audio_path": "output/music_analysis/20250308_020527_de076be9_https___open_spotify_com_track/song_20250308_020527_https___open_spotify_com_track_2S6XOQqWqUBIySUU00vMru_si_f65a83758bcc442a.wav",
+  "public_audio_path": "output/music_analysis/audio/song_20250308_020527_https___open_spotify_com_track_2S6XOQqWqUBIySUU00vMru_si_f65a83758bcc442a.wav",
+  "creation_time": "2025-03-08T02:05:48.705874",
+  "human_time": "08/03/25, 02:05",
+  "image_path": "output/images/art_20250308_020537_4cc625f0.jpg"
+}
