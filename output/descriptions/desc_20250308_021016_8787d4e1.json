@@ -1,0 +1,12 @@
+{
+  "song_title": "Walk In My Shadow",
+  "artist": "Free",
+  "theme": "Music Visualization",
+  "image_prompt": "Create a visual representation of the song 'Walk In My Shadow' by Free. \"'Walk In My Shadow'\" by Free evokes a subdued yet contemplative mood. The consistent pitch and minimal variation create a sense of calmness, suggesting introspection or tranquility. Notably, the lack of harmonic complexity gives it a sparse, raw quality, allowing the listener to focus on the emotive essence of the piece. \n\nThe average loudness remains gentle, contributing to its overall restraint, while the slight fluctuations in energy introduce subtle moments of intensity that can evoke feeli",
+  "description": "\"'Walk In My Shadow'\" by Free evokes a subdued yet contemplative mood. The consistent pitch and minimal variation create a sense of calmness, suggesting introspection or tranquility. Notably, the lack of harmonic complexity gives it a sparse, raw quality, allowing the listener to focus on the emotive essence of the piece. \n\nThe average loudness remains gentle, contributing to its overall restraint, while the slight fluctuations in energy introduce subtle moments of intensity that can evoke feelings of longing or nostalgia. These elements combine to create an experience that feels intimate, drawing the listener into a space of quiet reflection.",
+  "audio_path": "output/music_analysis/20250308_021005_03f55ce5_https___open_spotify_com_track/song_20250308_021005_https___open_spotify_com_track_6URu54HPMyL9SjnzXn607m_si_cbcc4e87180844f3.wav",
+  "public_audio_path": "output/music_analysis/audio/song_20250308_021005_https___open_spotify_com_track_6URu54HPMyL9SjnzXn607m_si_cbcc4e87180844f3.wav",
+  "creation_time": "2025-03-08T02:10:26.623271",
+  "human_time": "08/03/25, 02:10",
+  "image_path": "output/images/art_20250308_021016_8787d4e1.jpg"
+}

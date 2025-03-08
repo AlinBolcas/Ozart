@@ -1,0 +1,12 @@
+{
+  "song_title": "Shake up Christmas",
+  "artist": "Train",
+  "theme": "Music Visualization",
+  "image_prompt": "A peaceful winter night unfolds, where a quaint village is blanketed in soft, shimmering snow, each flake glistening under the gentle glow of street lamps. In the foreground, a small group of friends gathers around a crackling fire, their laughter and warmth contrasting with the crisp air, each face illuminated by flickering flames that dance like echoes of joy. Delicate strings of twinkling lights weave through the branches of nearby trees, casting a soft, golden hue that envelops the scene in a serene warmth. The sky above is a deep indigo, scattered with stars that twinkle like memories, creating a sense of intimate connection and reflection. The color palette features cool blues and warm golds, enhancing the tranquil yet uplifting mood. Soft shadows play across the snowy ground, adding depth and inviting viewers to feel the profound simplicity of togetherness and celebration.",
+  "description": "\"'Shake up Christmas'\" by Train evokes a subdued yet contemplative mood, characterized by its consistent pitch and gentle dynamics. The uniformity in melody creates a tranquil ambiance, allowing the listener to reflect deeply without distraction. Notably, the song\u2019s harmonic texture is minimal, contributing to an intimate feel that draws the audience in. \n\nThe most significant energy shifts occur subtly, with slight fluctuations in loudness that enhance emotional resonance, particularly during pivotal moments of the track. This understated intensity invites listeners to connect personally, making it a compelling piece that thrives on simplicity and emotional depth.",
+  "audio_path": "output/music_analysis/20250308_021720_916a49d4_https___open_spotify_com_track/song_20250308_021720_https___open_spotify_com_track_10JBIfvldDR2TnT5sphGc2_si_cbcc88c15e32426b.wav",
+  "public_audio_path": "output/music_analysis/audio/song_20250308_021720_https___open_spotify_com_track_10JBIfvldDR2TnT5sphGc2_si_cbcc88c15e32426b.wav",
+  "creation_time": "2025-03-08T02:17:46.063839",
+  "human_time": "08/03/25, 02:17",
+  "image_path": "output/images/art_20250308_021732_38d4f7ba.jpg"
+}

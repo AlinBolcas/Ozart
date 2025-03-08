@@ -90,6 +90,10 @@ def process_songs_thread(agent, songs):
                 song_title = song_metadata.get("title", song)
                 artist = song_metadata.get("artist", "Unknown Artist")
                 
+                # Fix the analysis text by replacing "Unknown Song" with the actual title
+                if "Unknown Song" in song_description and song_title:
+                    song_description = song_description.replace("Unknown Song", f"'{song_title}'")
+                
                 # Print analysis results with nice formatting
                 print(f"\n{'*'*50}")
                 print(f"✅ ANALYSIS COMPLETE: '{song_title}' by {artist}")
@@ -109,8 +113,13 @@ def process_songs_thread(agent, songs):
                 filename = f"art_{timestamp}_{image_id}.jpg"
                 image_path = os.path.join(IMG_DIR, filename)
                 
-                # Generate a prompt based on song description
-                prompt = f"Create a visual representation of the song '{song_title}' by {artist}. {song_description[:500]}"
+                # Use agent's _generate_image_prompt method instead of direct prompt construction
+                # The method takes title, description, and theme (using empty theme)
+                prompt = agent._generate_image_prompt(
+                    song_title=song_title, 
+                    song_description=song_description,
+                    theme=""  # Empty theme since we're not using themes
+                )
                 
                 # Print the full prompt
                 print("\n📝 IMAGE PROMPT:")
@@ -382,18 +391,10 @@ def main():
     .stButton button {
         color: white !important;
     }
-    /* Make the cover image look clickable */
-    .clickable-image {
-        cursor: pointer;
-        transition: opacity 0.3s;
-    }
-    .clickable-image:hover {
-        opacity: 0.9;
-    }
     </style>
     """, unsafe_allow_html=True)
 
-    # Layout: header with clickable image
+    # Layout: header with simple image
     cover_paths = [
         "cover_02.png",
         "data/cover_02.png", 
@@ -404,36 +405,13 @@ def main():
     cover_loaded = False
     for path in cover_paths:
         if os.path.exists(path):
-            # Instead of using st.image, use HTML with onClick to refresh page
+            cover_img = Image.open(path)
             col1, col2, col3 = st.columns([1, 10, 1])
             with col2:
-                # Convert image to base64 for embedding in HTML
-                import base64
-                with open(path, "rb") as img_file:
-                    img_data = base64.b64encode(img_file.read()).decode()
-                
-                # Create clickable image with JavaScript to refresh
-                st.markdown(f"""
-                <div class="clickable-image" title="Click to refresh">
-                    <img src="data:image/png;base64,{img_data}" width="1200" alt="Ozart Logo">
-                </div>
-                <script>
-                // Add click handler for image
-                document.addEventListener('DOMContentLoaded', function() {{
-                    const clickableImages = document.querySelectorAll('.clickable-image');
-                    clickableImages.forEach(img => {{
-                        img.addEventListener('click', function() {{
-                            // Force a complete page refresh from server (not cache)
-                            window.location.reload(true);
-                        }});
-                    }});
-                }});
-                </script>
-                """, unsafe_allow_html=True)
-            
+                st.image(cover_img, width=1200)
             cover_loaded = True
             break
-    
+
     # Layout: sidebar with stats
     with st.sidebar:
         # Try to find and display profile image

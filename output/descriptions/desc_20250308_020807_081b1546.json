@@ -1,0 +1,12 @@
+{
+  "song_title": "In Dreams - 1987 Version",
+  "artist": "Roy Orbison",
+  "theme": "Music Visualization",
+  "image_prompt": "Create a visual representation of the song 'In Dreams - 1987 Version' by Roy Orbison. \"Unknown Song\" by Roy Orbison evokes a haunting yet tender emotional quality, capturing a sense of longing and nostalgia. The melody, characterized by minimal pitch variation, suggests a reflective mood, inviting listeners to immerse themselves in its poignant atmosphere. Notably, Orbison's voice shines through with a rich timbre, despite the absence of harmonic complexity, emphasizing the raw emotional weight of his delivery. The song\u2019s dynamics exhibit subtle shifts, with moments of increased ",
+  "description": "\"Unknown Song\" by Roy Orbison evokes a haunting yet tender emotional quality, capturing a sense of longing and nostalgia. The melody, characterized by minimal pitch variation, suggests a reflective mood, inviting listeners to immerse themselves in its poignant atmosphere. Notably, Orbison's voice shines through with a rich timbre, despite the absence of harmonic complexity, emphasizing the raw emotional weight of his delivery. The song\u2019s dynamics exhibit subtle shifts, with moments of increased intensity that heighten the feeling of yearning, creating a captivating contrast within its gentle flow. Overall, this piece showcases Orbison's ability to convey deep emotion through simplicity and restraint.",
+  "audio_path": "output/music_analysis/20250308_020757_106cbd80_https___open_spotify_com_track/song_20250308_020757_https___open_spotify_com_track_6b5AxWIsx7H09bjun76ckf_si_302e64c0191246b6.wav",
+  "public_audio_path": "output/music_analysis/audio/song_20250308_020757_https___open_spotify_com_track_6b5AxWIsx7H09bjun76ckf_si_302e64c0191246b6.wav",
+  "creation_time": "2025-03-08T02:08:17.564489",
+  "human_time": "08/03/25, 02:08",
+  "image_path": "output/images/art_20250308_020807_081b1546.jpg"
+}
