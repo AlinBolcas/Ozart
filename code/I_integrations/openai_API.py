@@ -48,11 +48,8 @@ class OpenAIAPI:
         self.max_tokens = max_tokens
         self.system_message = system_message
         
-        # Log initialization with better formatting
-        print("\n" + "="*50)
-        print(f"🚀 OpenAI API initialized with model: {model}")
-        print(f"🔑 Using API key: {api_key[:4]}...{api_key[-4:]}")
-        print("="*50 + "\n")
+        # Log initialization without showing API key
+        logging.info(f"OpenAI API initialized with model: {self.model}")
 
     def _create_messages(
         self,
@@ -213,7 +210,7 @@ class OpenAIAPI:
         user_prompt: str,
         reasoning_effort: str = "low",
         message_history: List[Dict[str, str]] = None,
-        model: str = "o1-mini",
+        model: str = "o3-mini",
         max_tokens: int = None,
         **kwargs
     ) -> str:

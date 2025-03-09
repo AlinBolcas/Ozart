@@ -113,125 +113,127 @@ class MusicAnalyzer:
         session_path.mkdir(exist_ok=True)
         return session_path
     
-    def process_input(self, input_str: str) -> Dict[str, Any]:
-        """Process input text which could be a URL, song name, or file path."""
+    def process_input(self, input_text: str) -> Dict[str, Any]:
+        """
+        Process input text which could be a URL, song name, or file path.
+        Returns a dictionary with analysis results.
+        """
+        if not input_text:
+            return {"error": "Empty input provided"}
+        
         try:
-            print("\n🎵 Starting music analysis...")
+            # Create output directory with timestamp and unique ID
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            session_id = str(uuid.uuid4())[:8]  # Use first 8 chars of UUID
             
-            # Create unique session ID and directory
-            session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-            session_id += f"_{str(uuid.uuid4())[:8]}"
-            session_dir = os.path.join(self.output_dir, session_id)
-            os.makedirs(session_dir, exist_ok=True)
+            # Create a directory name based on cleaned song name if possible
+            cleaned_input = ''.join(c if c.isalnum() or c in ' -_' else '_' for c in input_text[:30])
+            cleaned_input = cleaned_input.strip().replace(' ', '_')
             
-            # Step 1: Get audio file
-            print("\n📥 Obtaining audio...")
-            if input_str.startswith(("https://open.spotify.com/", "spotify:")):
-                print("   • Source: Spotify")
-                # Handle Spotify URL
-                track_info = self._get_spotify_track_info(self._extract_spotify_id(input_str))
-                if not track_info:
-                    return {"error": "Failed to get Spotify track info"}
-                    
-                youtube_url = self._search_youtube(f"{track_info['name']} {track_info['artist']}")
-                if not youtube_url:
-                    return {"error": "Failed to find YouTube video"}
-                    
-                download_result = self._download_youtube(youtube_url, session_dir)
-                audio_path, yt_metadata = download_result
-                if not audio_path:
-                    return {"error": "Failed to download audio"}
-                    
-                # Combine metadata - prioritize Spotify info
-                metadata = {
-                    "source": "spotify",
-                    "title": track_info["name"],
-                    "artist": track_info["artist"],
-                    "album": track_info.get("album", "Unknown"),
-                    "spotify_data": track_info,
-                    "youtube_data": yt_metadata,
-                    "audio_path": audio_path
-                }
-                
+            output_dir = os.path.join(self.output_dir, f"{timestamp}_{session_id}_{cleaned_input}")
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Log the starting of analysis
+            print(f"\nAnalyzing: {input_text}")
+            
+            # Step 1: Get audio file (download or locate)
+            audio_path, song_metadata = self._get_audio_file(input_text, output_dir)
+            
+            if not audio_path or not os.path.exists(audio_path):
+                return {"error": f"Failed to obtain audio for {input_text}"}
+            
+            # Extract proper song title and metadata
+            if 'name' in song_metadata:
+                # This is Spotify metadata
+                song_title = song_metadata.get('name', input_text)
+                artist_name = song_metadata.get('artist', 'Unknown Artist')
+                description = f"Song from Spotify. Album: {song_metadata.get('album', 'Unknown')}"
+                duration = song_metadata.get('duration_ms', 0) / 1000 if 'duration_ms' in song_metadata else 0
+                uploader = artist_name
             else:
-                if input_str.startswith(("https://www.youtube.com/", "https://youtu.be/")):
-                    print("   • Source: YouTube")
-                    youtube_url = input_str
-                else:
-                    print("   • Source: Search query")
-                    youtube_url = self._search_youtube(input_str)
-                    if not youtube_url:
-                        return {"error": "Failed to find YouTube video"}
-                
-                download_result = self._download_youtube(youtube_url, session_dir)
-                audio_path, yt_metadata = download_result
-                if not audio_path:
-                    return {"error": "Failed to download audio"}
-                    
-                # Use YouTube metadata
-                metadata = {
-                    "source": "youtube",
-                    "title": yt_metadata.get("title", "Unknown Song"),
-                    "artist": yt_metadata.get("artist", "Unknown Artist"),
-                    "youtube_data": yt_metadata,
-                    "audio_path": audio_path
-                }
+                # This is YouTube metadata or direct input
+                song_title = song_metadata.get('title', input_text)
+                artist_name = song_metadata.get('uploader', 'Unknown Artist')
+                description = song_metadata.get('description', '')
+                duration = song_metadata.get('duration', 0)
+                uploader = song_metadata.get('uploader', 'Unknown')
             
-            # Step 2: Extract features
-            print("\n🔍 Extracting audio features...")
-            features = self._extract_audio_features(Path(audio_path))
-            if features is None:
-                return {"error": "Failed to extract audio features"}
+            print(f"Using song title: {song_title} by {artist_name}")
             
-            # Display feature analysis
-            feature_summary = self._display_features(features)
+            # Generate a more consistent filename for the audio
+            audio_ext = os.path.splitext(audio_path)[1]
+            clean_song_name = ''.join(c if c.isalnum() or c in ' -_' else '_' for c in input_text)
+            clean_song_name = clean_song_name.strip().replace(' ', '_')
+            new_audio_name = f"song_{timestamp}_{clean_song_name}{audio_ext}"
+            new_audio_path = os.path.join(output_dir, new_audio_name)
             
-            # Step 3: Generate interpretation
-            print("\n🤖 Generating AI interpretation...")
-            interpretation = self._generate_interpretation(features, metadata)
-            if not interpretation:
-                return {"error": "Failed to generate interpretation"}
+            # Rename the audio file for consistency
+            try:
+                os.rename(audio_path, new_audio_path)
+                audio_path = new_audio_path  # Update the path
+            except:
+                pass  # If rename fails, continue with original path
             
-            print(f"\n📝 === SONG INTERPRETATION === 📝")
-            print(f"'{metadata['title']}' by {metadata['artist']}")
-            print("-" * 40)
-            print(interpretation)
-            print("=" * 40)
+            # Add processed audio file to a public "audio" folder for easy access
+            public_audio_dir = os.path.join(self.output_dir, "audio")
+            os.makedirs(public_audio_dir, exist_ok=True)
+            public_audio_path = os.path.join(public_audio_dir, new_audio_name)
             
-            # Step 4: Save everything in one consolidated JSON
-            analysis_data = {
-                "session_id": session_id,
-                "timestamp": datetime.now().isoformat(),
-                "metadata": metadata,
-                "features": features.to_dict(orient='records')[0],
-                "feature_summary": feature_summary,
-                "interpretation": interpretation,
-                "paths": {
-                    "session_dir": session_dir,
-                    "audio_file": audio_path
-                }
-            }
+            # Copy the file to public audio directory
+            try:
+                import shutil
+                shutil.copy2(audio_path, public_audio_path)
+            except:
+                pass  # If copy fails, continue
             
-            # Save consolidated JSON
-            analysis_path = os.path.join(session_dir, "analysis.json")
-            with open(analysis_path, 'w', encoding='utf-8') as f:
-                json.dump(analysis_data, f, ensure_ascii=False, indent=2)
+            # Extract features
+            print("Extracting audio features...")
+            features = self._extract_audio_features(audio_path)
             
-            print(f"\n✅ Analysis complete! Results saved to: {session_dir}")
+            # Display features summary
+            print("Analyzing features...")
+            features_summary = self._display_features(features)
             
-            # Return complete analysis results
-            return {
-                "session_path": session_dir,
+            # Generate interpretation
+            print("Generating AI interpretation...")
+            interpretation = self._generate_interpretation(features, song_metadata)
+            
+            # Save interpretation to text file
+            interpretation_path = os.path.join(output_dir, "interpretation.txt")
+            with open(interpretation_path, "w") as f:
+                f.write(interpretation)
+            
+            # Compile results
+            result = {
+                "url": input_text,
+                "processed_time": datetime.now().isoformat(),
                 "audio_path": audio_path,
-                "analysis_path": analysis_path,
+                "public_audio_path": public_audio_path,
+                "features_summary": features_summary,
                 "interpretation": interpretation,
-                "metadata": metadata,
-                "features": features
+                "interpretation_path": interpretation_path,
+                "session_path": output_dir,
+                "metadata": {
+                    "title": song_title,
+                    "artist": artist_name,
+                    "uploader": uploader,
+                    "duration": duration,
+                    "description": description,
+                    "view_count": song_metadata.get('view_count', 0),
+                    "upload_date": song_metadata.get('upload_date', '')
+                }
             }
+            
+            # Save results
+            with open(os.path.join(output_dir, "analysis_results.json"), "w") as f:
+                json.dump(result, f, indent=2, default=str)
+            
+            print(f"\nAnalysis complete! Results saved to: {output_dir}")
+            return result
             
         except Exception as e:
-            print(f"❌ Error processing input: {e}")
-            return {"error": f"Failed to process input: {str(e)}"}
+            print(f"Error processing input: {e}")
+            return {"error": str(e)}
     
     def _get_audio_file(self, input_text: str, output_dir: str) -> Tuple[Optional[str], Dict[str, Any]]:
         """
@@ -267,14 +269,14 @@ class MusicAnalyzer:
                 return None, {}
             
             # Download from YouTube and merge metadata
-            audio_path, youtube_metadata = self._download_youtube(youtube_url, output_dir)
+            audio_path, youtube_metadata = self._download_from_youtube(youtube_url, output_dir)
             # Keep Spotify's track_info as primary, but fill in missing details from YouTube
             return audio_path, track_info
         
         # Check if input is a YouTube URL
         elif 'youtube.com' in input_text or 'youtu.be' in input_text:
             print("Detected YouTube URL")
-            return self._download_youtube(input_text, output_dir)
+            return self._download_from_youtube(input_text, output_dir)
         
         # Check if input is a local file
         elif os.path.exists(input_text) and input_text.endswith(('.mp3', '.wav', '.ogg', '.flac')):
@@ -297,13 +299,13 @@ class MusicAnalyzer:
                 print(f"Could not find YouTube video for: {input_text}")
                 return None, {}
             
-            audio_path, metadata = self._download_youtube(youtube_url, output_dir)
+            audio_path, metadata = self._download_from_youtube(youtube_url, output_dir)
             # For direct song name input, use the input as the song title if we couldn't parse it
             if metadata.get('title') == 'unknown':
                 metadata['title'] = input_text
             return audio_path, metadata
 
-    def _download_youtube(self, youtube_url: str, output_dir: str) -> Tuple[Optional[str], Dict[str, Any]]:
+    def _download_from_youtube(self, youtube_url: str, output_dir: str) -> Tuple[Optional[str], Dict[str, Any]]:
         """Download audio from a YouTube URL. Returns (audio_path, metadata)"""
         try:
             import yt_dlp as youtube_dl
@@ -379,9 +381,9 @@ class MusicAnalyzer:
                 if not audio_path:
                     print(f"⚠️ Warning: Downloaded audio file not found in {output_dir}")
                     return None, {}
-                
+                    
                 return audio_path, metadata
-                
+            
         except Exception as e:
             print(f"Error downloading from YouTube: {e}")
             
@@ -399,49 +401,47 @@ class MusicAnalyzer:
         features = self.smile.process_file(str(wav_file))
         return features
     
-    def _display_features(self, features: pd.DataFrame) -> Dict[str, Any]:
+    def _display_features(self, features: pd.DataFrame) -> Dict[str, float]:
         """Print a concise summary of the extracted features."""
-        try:
-            features_dict = features.iloc[0].to_dict()
+        features_dict = features.iloc[0].to_dict()
+        
+        # Organize features by category
+        categories = {
+            "Pitch": ["F0", "pitch", "semitone"],
+            "Energy/Loudness": ["loudness", "energy", "shimmer", "amplitude"],
+            "Spectral": ["spectral", "mfcc", "harmonic", "alpha"],
+            "Voice Quality": ["jitter", "harmonics", "formant"]
+        }
+        
+        print("\n=== AUDIO FEATURES SUMMARY ===")
+        
+        # Print only category counts and a few representative metrics
+        for category, keywords in categories.items():
+            # Count features in this category
+            category_features = [k for k, v in features_dict.items() 
+                               if any(keyword.lower() in k.lower() for keyword in keywords)]
             
-            # Group features by type
-            feature_groups = {
-                "Pitch & Melody": [],
-                "Energy & Dynamics": [],
-                "Timbre & Texture": [],
-                "Voice & Rhythm": []
-            }
-            
-            # Categorize features
-            for key, value in features_dict.items():
-                if "F0" in key:
-                    feature_groups["Pitch & Melody"].append((key, value))
-                elif "loudness" in key or "shimmer" in key:
-                    feature_groups["Energy & Dynamics"].append((key, value))
-                elif "spectral" in key or "mfcc" in key:
-                    feature_groups["Timbre & Texture"].append((key, value))
-                elif "jitter" in key or "voice" in key:
-                    feature_groups["Voice & Rhythm"].append((key, value))
-            
-            # Print beautiful summary
-            print("\n🎵 === AUDIO ANALYSIS SUMMARY === 🎵")
-            for category, features in feature_groups.items():
-                if features:
-                    print(f"\n📊 {category}")
-                    print("   " + "─" * 40)
-                    # Print first 3 examples with cleaned up names
-                    for key, value in features[:3]:
-                        clean_name = key.split('_')[0].replace('F0', 'Pitch').title()
-                        print(f"   • {clean_name}: {value:.2f}")
-            
-            total = sum(len(group) for group in feature_groups.values())
-            print(f"\n📈 Total features analyzed: {total}")
-            
-            return features_dict
-            
-        except Exception as e:
-            print(f"❌ Error displaying features: {e}")
-            return {}
+            if category_features:
+                # Get at most 3 representative features to display
+                sample_features = category_features[:3]
+                values = [features_dict[k] for k in sample_features]
+                
+                print(f"\n--- {category}: {len(category_features)} metrics extracted ---")
+                # Create the metrics string separately for clarity
+                metrics = []
+                for k in sample_features:
+                    feature_name = k.split("_")[0]
+                    feature_value = features_dict[k]
+                    metrics.append(f"{feature_name}: {feature_value:.2f}")
+                metrics_str = ", ".join(metrics)
+                print(f"Example metrics: {metrics_str}")
+            else:
+                print(f"\n--- {category}: No features found ---")
+        
+        # Print total number of features
+        print(f"\nTotal features extracted: {len(features_dict)}")
+        
+        return features_dict
     
     def _generate_interpretation(self, features: pd.DataFrame, metadata: Dict[str, Any]) -> str:
         """Generate AI interpretation of audio features."""
@@ -600,15 +600,13 @@ Duration: {metadata.get('duration', 0)} seconds
 if __name__ == "__main__":
     analyzer = MusicAnalyzer()
     
-    print("\n" + "="*60)
-    print("🎵 MUSIC ANALYZER - TEST MODE 🎵")
-    print("="*60 + "\n")
-    
+    print("\n=== MUSIC ANALYZER ===")
+    print("This tool analyzes music using openSMILE and provides AI-powered interpretation.")
     print("You can enter:")
     print("1. A song name (e.g., 'Bohemian Rhapsody Queen')")
-    print("2. A Spotify track URL")
-    print("3. A YouTube URL")
-    print("\nType 'exit' to quit\n")
+    print("2. A Spotify track URL (e.g., 'https://open.spotify.com/track/4u7EnebtmKWzUH433cf5Qv')")
+    print("3. A YouTube URL (e.g., 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ')")
+    print("\nType 'exit' or 'quit' to end the program")
     
     while True:
         print("\nEnter a song name, Spotify URL, or YouTube URL:")
@@ -621,16 +619,13 @@ if __name__ == "__main__":
         # Process input
         results = analyzer.process_input(input_str)
         
-        if "error" in results:
-            print(f"\n❌ Analysis failed: {results['error']}")
+        if results and "error" not in results:
+            # Print interpretation
+            print("\n=== MUSIC INTERPRETATION ===")
+            print(results["interpretation"])
+            print(f"\nFull analysis saved to: {results['session_path']}")
         else:
-            # The process_input function now handles all the printing:
-            # - Audio feature analysis
-            # - Song interpretation with title/artist
-            # - Save location
-            print("\n✨ Analysis complete!")
-            print(f"📁 Full analysis saved to: {results['session_path']}")
-            print(f"🎵 Audio file: {results['audio_path']}")
-            print(f"📊 Analysis data: {results['analysis_path']}")
+            print("\n❌ Analysis failed. Please try again with a different input.")
         
-        print("\n" + "="*60)
+        print("\n" + "="*50)
+

@@ -15,10 +15,14 @@ import json
 import logging
 from typing import Dict, List, Optional, Union, Any
 from pathlib import Path
+import subprocess
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Configure logging - set to WARNING to reduce noise
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Only show our module's logs
+logger.setLevel(logging.INFO)
 
 # Add paths for importing other modules
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -26,10 +30,17 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "I
 
 # Import required modules
 try:
-    from I_integrations.openai_API import OpenAIAPI
-    from II_textGen.tools import Tools
-    from II_textGen.memory import Memory
-    from II_textGen.rag import RAG
+    # Try both import methods silently
+    try:
+        from I_integrations.openai_API import OpenAIAPI
+        from II_textGen.tools import Tools
+        from II_textGen.memory import Memory
+        from II_textGen.rag import RAG
+    except ImportError:
+        from code.I_integrations.openai_API import OpenAIAPI
+        from code.II_textGen.tools import Tools
+        from code.II_textGen.memory import Memory
+        from code.II_textGen.rag import RAG
 except ImportError as e:
     logger.error(f"Failed to import required modules: {e}")
     logger.error("Make sure all required modules are available in their respective directories.")
@@ -69,8 +80,6 @@ class TextGen:
         # Register available tools
         self._register_tools()
         
-        logger.info("TextGen initialized successfully")
-        
     def _register_tools(self):
         """Register available tools from the Tools class."""
         self.available_tools = {}
@@ -84,8 +93,6 @@ class TextGen:
                 tool_func = getattr(self.tools, attr_name)
                 self.available_tools[attr_name] = tool_func
                 
-        logger.info(f"Registered {len(self.available_tools)} tools")
-        
     def _prepare_prompts(self, user_prompt: str, system_context: str = None, context: str = None) -> tuple:
         """
         Prepare final system and user messages with appropriate context.
@@ -491,131 +498,213 @@ class TextGen:
             return False
 
 
-# Example usage focused on AI Art & Music project brainstorming
+# Example usage focused on demonstrating TextGen functionality
 if __name__ == "__main__":
     print("\n" + "="*60)
-    print("🎨 🎵 ✨ AI ART & MUSIC PROJECT BRAINSTORMING ✨ 🎵 🎨")
+    print("🚀 TEXTGEN FUNCTIONALITY DEMONSTRATION 🚀")
     print("="*60 + "\n")
     
     text_gen = TextGen()
     
-    try:
-        # Demo 1: Initial Project Scoping
-        print("\n" + "="*50)
-        print("🏗️  PHASE 1: PROJECT SCOPING & ARCHITECTURE")
-        print("="*50)
-        response = text_gen.chat_completion(
-            user_prompt="""Give an extremely concise 1-paragraph summary of a system architecture for generating art from music. Cover only the essential components.""",
-            system_prompt="You are a concise AI systems architect. Keep all responses under 200 tokens in exactly one paragraph.",
-            max_tokens=150
-        )
-        print("\n" + "-"*50)
-        print("📋 ARCHITECTURAL INSIGHTS:")
-        print("-"*50)
-        print(f"\n{response}\n")
+    # Function to prompt for input with default value
+    def prompt(message, default=None):
+        result = input(f"{message} [{default}]: ") if default else input(f"{message}: ")
+        return result if result.strip() else default
+    
+    # Menu-driven test approach
+    while True:
+        print("\nAvailable Tests:")
+        print("1. Basic Chat Completion")
+        print("2. Multi-Tool Completion")
+        print("3. Structured Output")
+        print("4. Reasoned Completion")
+        print("5. Vision Analysis")
+        print("6. Memory & History Management")
+        print("0. Exit")
         
-        # Demo 2: Research Current Approaches
-        print("\n" + "="*50)
-        print("🔬 PHASE 2: RESEARCH & STATE OF THE ART")
-        print("="*50)
-        response = text_gen.chat_completion(
-            user_prompt="Summarize in one very brief paragraph the latest in AI music-to-image translation.",
-            system_prompt="You are an extremely concise researcher. Keep responses under 150 tokens in one paragraph.",
-            tool_names=["web_crawl"],
-            system_context="Search current info, but return only the most critical findings in one paragraph.",
-            max_tokens=150
-        )
-        print("\n" + "-"*50)
-        print("📚 CURRENT RESEARCH:")
-        print("-"*50)
-        print(f"\n{response}\n")
+        choice = prompt("Select a test to run", "0")
         
-        # Demo 3: Memory System Design
-        print("\n" + "="*50)
-        print("💾 PHASE 3: MEMORY SYSTEM DESIGN")
-        print("="*50)
-        structured = text_gen.structured_output(
-            user_prompt="""Design an ultra-compact memory system for music-to-image generation with minimal details. Limit your response to bare essentials.""",
-            system_prompt="You are a minimalist database architect. Keep responses extremely concise.",
-            max_tokens=200
-        )
-        print("\n" + "-"*50)
-        print("📊 MEMORY SYSTEM DESIGN:")
-        print("-"*50)
-        print(json.dumps(structured, indent=2))
-        
-        # Demo 4: Iterative Refinement Process
-        print("\n" + "="*50)
-        print("🔄 PHASE 4: REFINEMENT PIPELINE DESIGN")
-        print("="*50)
-        try:
-            reasoned_response = text_gen.reasoned_completion(
-                user_prompt="""Describe in exactly one short paragraph a basic refinement pipeline for music-to-image generation.""",
-                reasoning_effort="low",
+        if choice == "0":
+            print("Exiting test suite.")
+            break
+            
+        elif choice == "1":
+            # Demo 1: Basic Chat Completion
+            print("\n" + "="*50)
+            print("💬 TEST 1: BASIC CHAT COMPLETION")
+            print("="*50)
+            custom_prompt = prompt("Enter your prompt (or use default)", "Explain the concept of API integration in one short paragraph.")
+            response = text_gen.chat_completion(
+                user_prompt=custom_prompt,
+                system_prompt="You are a concise technical writer. Keep all responses under 150 tokens in exactly one paragraph.",
                 max_tokens=150
             )
             print("\n" + "-"*50)
-            print("📝 REFINEMENT PIPELINE:")
+            print("📋 RESPONSE:")
             print("-"*50)
-            print(f"\n{reasoned_response}\n")
-        except Exception as e:
-            print(f"\n❌ Error in refinement pipeline design: {e}")
-        
-        # Demo 5: Visual Style Analysis
-        print("\n" + "="*50)
-        print("👁️ PHASE 5: VISUAL STYLE ANALYSIS")
-        print("="*50)
-        try:
-            # Example of an AI-generated artwork - use a more reliable image URL
-            image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg/1200px-Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg"
-            vision_response = text_gen.vision_analysis(
-                image_url=image_url,
-                user_prompt="""In exactly one short paragraph, analyze how this image's visual elements might relate to music.""",
-                system_prompt="You are a brief art critic. Limit response to 100 tokens in one paragraph.",
-                max_tokens=100
+            print(f"\n{response}\n")
+            
+        elif choice == "2":
+            # Demo 2: Multi-Tool Completion
+            print("\n" + "="*50)
+            print("🧰 TEST 2: MULTI-TOOL COMPLETION")
+            print("="*50)
+            
+            # Get a topic to process with multiple tools
+            topic = prompt("Enter a topic to research and visualize", "climate change impacts")
+            
+            # List available tools for reference
+            print("\nAvailable tools that might be used:")
+            print("- web_crawl: Search the web for information")
+            print("- generate_image: Create an image based on a description")
+            print("- get_datetime: Get current date and time")
+            print("- get_weather: Get current weather for a location")
+            print("- get_forecast: Get weather forecast for a location")
+            print("- text_to_speech: Convert text to spoken audio")
+            
+            # Create a system message that encourages multi-tool use
+            system_message = f"""You are a research assistant with access to multiple tools.
+            
+For this task, use any tools that would help provide a comprehensive response about '{topic}'.
+Consider searching for current information, generating relevant images, checking date/time 
+relevance, or any other tools that would enhance your response.
+
+Important: First decide which tools would be helpful, then use them in sequence.
+After gathering information from tools, synthesize everything into a helpful response.
+
+When using text_to_speech, only use one of these voices: alloy, echo, fable, onyx, nova, shimmer, ash, sage, coral.
+
+Be resourceful and creative with the tools available to you."""
+
+            # Run the completion with multiple tools available
+            try:
+                response = text_gen.chat_completion(
+                    user_prompt=f"Research '{topic}' thoroughly. Use multiple tools to gather information and create visual aids. Then provide a comprehensive summary of what you've learned.",
+                    system_prompt=system_message,
+                    tool_names=["web_crawl", "generate_image", "get_datetime", "get_weather", "get_forecast", "text_to_speech"],
+                    system_context="You have access to multiple tools. Use them strategically to provide the best response.",
+                    max_tokens=500
+                )
+                
+                print("\n" + "-"*50)
+                print("🔍 MULTI-TOOL RESEARCH RESULTS:")
+                print("-"*50)
+                print(f"\n{response}\n")
+            except Exception as e:
+                print(f"\n❌ Error during multi-tool completion: {e}")
+                response = "Error occurred during processing."
+            
+            # Check if the model generated any images and display them
+            if "output/images" in response:
+                potential_image_paths = [line.strip() for line in response.split('\n') if "output/images" in line]
+                for path in potential_image_paths:
+                    # Extract path by finding text that contains 'output/images'
+                    import re
+                    image_path_match = re.search(r'(output\/images\/[^\s:,\'"]+)', path)
+                    if image_path_match:
+                        image_path = image_path_match.group(1)
+                        if os.path.exists(image_path):
+                            print(f"\nOpening generated image: {image_path}")
+                            try:
+                                if sys.platform == "darwin":  # macOS
+                                    subprocess.run(["qlmanage", "-p", image_path], 
+                                                  stdout=subprocess.DEVNULL, 
+                                                  stderr=subprocess.DEVNULL)
+                                elif sys.platform == "win32":  # Windows
+                                    os.startfile(image_path)
+                                else:  # Linux
+                                    subprocess.run(["xdg-open", image_path])
+                            except Exception as e:
+                                print(f"Couldn't open image for preview: {e}")
+            
+        elif choice == "3":
+            # Demo 3: Structured Output
+            print("\n" + "="*50)
+            print("💾 TEST 3: STRUCTURED OUTPUT")
+            print("="*50)
+            topic = prompt("Enter a topic for structured analysis", "email automation system")
+            structured = text_gen.structured_output(
+                user_prompt=f"Create a concise system overview for a {topic}. Include key components, inputs, outputs, and potential challenges.",
+                system_prompt="You are a systems analyst. Provide structured, concise information.",
+                max_tokens=200
             )
             print("\n" + "-"*50)
-            print("🎭 VISUAL ANALYSIS:")
+            print("📊 STRUCTURED OUTPUT:")
             print("-"*50)
-            print(f"\n{vision_response}\n")
-        except Exception as e:
-            print(f"\n❌ Error in visual analysis: {e}")
-        
-        # Demo 6: Generate Test Prompts
-        print("\n" + "="*50)
-        print("✍️ PHASE 6: PROMPT ENGINEERING")
-        print("="*50)
-        
-        test_songs = [
-            "Beethoven's Moonlight Sonata",
-            "Pink Floyd - Time",
-            "Miles Davis - So What"
-        ]
-        
-        for song in test_songs:
-            print("\n" + "-"*40)
-            print(f"🎵 PROMPT FOR: {song}")
-            print("-"*40)
+            print(json.dumps(structured, indent=2))
             
-            response = text_gen.chat_completion(
-                user_prompt=f"""Write a one-sentence image generation prompt for {song}.""",
-                system_prompt="You are a minimalist prompt engineer. Limit to ONE sentence of 50 tokens max.",
-                max_tokens=50
-            )
-            print(f"\n{response}\n")
+        elif choice == "4":
+            # Demo 4: Reasoned Completion
+            print("\n" + "="*50)
+            print("🧠 TEST 4: REASONED COMPLETION")
+            print("="*50)
+            try:
+                reasoning_topic = prompt("Enter a topic that requires reasoning", "how to prioritize features in a software project")
+                reasoned_response = text_gen.reasoned_completion(
+                    user_prompt=f"Explain a systematic approach to {reasoning_topic} in one concise paragraph.",
+                    reasoning_effort="low",
+                    max_tokens=150
+                )
+                print("\n" + "-"*50)
+                print("🔍 REASONED RESPONSE:")
+                print("-"*50)
+                print(f"\n{reasoned_response}\n")
+            except Exception as e:
+                print(f"\n❌ Error in reasoned completion: {e}")
+            
+        elif choice == "5":
+            # Demo 5: Vision Analysis
+            print("\n" + "="*50)
+            print("👁️ TEST 5: VISION ANALYSIS")
+            print("="*50)
+            try:
+                image_url = prompt("Enter image URL for analysis", "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg/1200px-Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg")
+                custom_prompt = prompt("Enter analysis prompt (or use default)", "Describe this image and what it conveys in one paragraph.")
+                
+                vision_response = text_gen.vision_analysis(
+                    image_url=image_url,
+                    user_prompt=custom_prompt,
+                    system_prompt="You are a concise image analyst. Limit response to 150 tokens in one paragraph.",
+                    max_tokens=150
+                )
+                print("\n" + "-"*50)
+                print("🎭 VISION ANALYSIS:")
+                print("-"*50)
+                print(f"\n{vision_response}\n")
+            except Exception as e:
+                print(f"\n❌ Error in vision analysis: {e}")
+            
+        elif choice == "6":
+            # Memory Management
+            print("\n" + "="*50)
+            print("💾 TEST 6: MEMORY & HISTORY MANAGEMENT")
+            print("="*50)
+            
+            # Check current memory state
+            print("Current memory state:")
+            memory_size = len(text_gen.memory.chat_history) if hasattr(text_gen, "memory") and hasattr(text_gen.memory, "chat_history") else 0
+            print(f"Messages in memory: {memory_size}")
+            
+            # Option to view history
+            if memory_size > 0 and prompt("View current chat history? (y/n)", "n").lower() == "y":
+                for i, entry in enumerate(text_gen.memory.chat_history):
+                    print(f"\nMessage {i+1}:")
+                    print(f"Role: {entry.get('role', 'unknown')}")
+                    content = entry.get('content', '')
+                    if len(content) > 100:
+                        content = content[:100] + "..."
+                    print(f"Content: {content}")
+            
+            # Save memory
+            if prompt("Save current memory to file? (y/n)", "y").lower() == "y":
+                history_path = text_gen.save_history()
+                print(f"📁 History saved to: {history_path}")
+            
+        else:
+            print("Invalid choice. Please try again.")
         
-        # Demo 7: Save Project Memory
-        print("\n" + "="*50)
-        print("💾 PHASE 7: SAVING PROJECT MEMORY")
-        print("="*50)
-        
-        history_path = text_gen.save_history()
-        print(f"📁 Project saved to: {history_path}")
-        
-        print("\n" + "="*60)
-        print("✅ COMPLETE ✅")
-        print("="*60 + "\n")
-        
-    except Exception as e:
-        print(f"\n❌ ERROR: {e}")
-        print("="*60 + "\n") 
+        input("\nPress Enter to continue...")
+    
+    print("\n" + "="*60)
+    print("🏁 TEST SUITE CLOSED 🏁")
+    print("="*60 + "\n") 

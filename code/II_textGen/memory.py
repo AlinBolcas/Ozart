@@ -4,13 +4,17 @@ import sys
 from typing import List, Dict, Optional, Union, Any
 from datetime import datetime
 from pathlib import Path
+import logging
 
-# Import the OpenAI API wrapper
+# Configure logging - disable most messages
+logging.basicConfig(level=logging.WARNING)
+logger = logging.getLogger(__name__)
+
+# Import the OpenAI API wrapper silently
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "I_integrations")))
 try:
     from openai_API import OpenAIAPI
 except ImportError:
-    print("Warning: Could not import OpenAIAPI. Make sure openai_API.py is in the I_integrations directory.")
     OpenAIAPI = None
 
 class Memory:

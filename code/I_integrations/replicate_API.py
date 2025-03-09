@@ -25,7 +25,6 @@ class ReplicateAPI:
 
         # Initialize replicate client
         self.client = replicate.Client(api_token=self.api_token)
-        print(f"Replicate API initialized with token: {self.api_token[:4]}...{self.api_token[-4:]}")
 
     def run_model(
         self,

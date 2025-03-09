@@ -4,6 +4,18 @@ import numpy as np
 import faiss
 from typing import List, Dict, Optional, Union, Callable, Any, Tuple
 from dataclasses import dataclass
+import logging
+
+# Configure logging to suppress FAISS messages
+logging.basicConfig(level=logging.WARNING)
+logging.getLogger("faiss").setLevel(logging.WARNING)
+
+# Import without printing warnings
+try:
+    import faiss
+except ImportError:
+    print("Warning: FAISS not installed. Vector search functionality will be limited.")
+    faiss = None
 
 # Ensure we can easily import our OpenAI wrapper
 import sys

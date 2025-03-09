@@ -4,6 +4,7 @@ import json
 import datetime
 import webbrowser
 import smtplib
+import subprocess
 from typing import Dict, List, Optional, Union, Any
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -30,14 +31,20 @@ try:
     from code.I_integrations.replicate_API import ReplicateAPI
     from code.I_integrations.tripo_API import TripoAPI
     from code.I_integrations.openai_API import OpenAIAPI
-    print("Successfully imported APIs with absolute imports")
 except ImportError:
-    # Fallback to dummy implementations
-    print("Failed to import APIs with absolute imports")
-    WebCrawler = DummyAPI
-    ReplicateAPI = DummyAPI
-    TripoAPI = DummyAPI
-    OpenAIAPI = DummyAPI
+    # Try relative imports as fallback
+    try:
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from I_integrations.web_crawling import WebCrawler
+        from I_integrations.replicate_API import ReplicateAPI, download_file
+        from I_integrations.tripo_API import TripoAPI
+        from I_integrations.openai_API import OpenAIAPI
+    except ImportError:
+        # Fallback to dummy implementations
+        WebCrawler = DummyAPI
+        ReplicateAPI = DummyAPI
+        TripoAPI = DummyAPI
+        OpenAIAPI = DummyAPI
 
 class Tools:
     """
@@ -50,7 +57,6 @@ class Tools:
         # Initialize API clients with safer method
         try:
             self.web_crawler = WebCrawler()
-            print("Web crawler initialized successfully")
         except Exception as e:
             self.web_crawler = None
             print(f"Warning: Failed to initialize web crawler: {e}")
@@ -78,45 +84,61 @@ class Tools:
     #################################
     
     def web_crawl(
-        self, 
-        query: str, 
-        sources: str = "all",  # "all", "ddg", "wiki", or a list of sources
-        num_results: int = 5,
+        self,
+        query: str,
+        sources: str = "both",
         include_wiki_content: bool = False,
-        max_wiki_sentences: int = 5,
-        safe_search: str = "moderate"
+        max_wiki_sections: int = 3,
+        max_results: int = 5
     ) -> Dict[str, Any]:
         """
-        Unified web crawling function to search across multiple sources.
+        Search the web using DuckDuckGo and/or Wikipedia.
         
         Args:
-            query: Search query string
-            sources: Which sources to use - "all", "ddg", "wiki" 
-            num_results: Maximum number of results per source
-            include_wiki_content: Whether to include full Wikipedia article content
-            max_wiki_sentences: Maximum sentences in Wikipedia summary
-            safe_search: Safety level for DuckDuckGo search
+            query: Search query
+            sources: Which sources to use ('ddg', 'wiki', or 'both')
+            include_wiki_content: Whether to include full Wikipedia content
+            max_wiki_sections: Maximum number of Wikipedia sections to include
+            max_results: Maximum number of search results to return
             
         Returns:
-            Dictionary with results from requested sources and a merged context
+            Dictionary with search results
         """
-        if not self.web_crawler:
+        results = {}
+        
+        if self.web_crawler is None:
             return {"error": "Web crawler not available"}
         
         try:
-            # Forward the request to the unified WebCrawler
-            results = self.web_crawler.search_web(
-                query=query,
-                sources=sources,
-                num_results=num_results,
-                include_wiki_content=include_wiki_content,
-                max_wiki_sentences=max_wiki_sentences,
-                safe_search=safe_search
-            )
+            if sources.lower() in ["ddg", "both"]:
+                try:
+                    ddg_results = self.web_crawler.search_ddg(query, max_results=max_results)
+                    results["ddg_results"] = ddg_results
+                except Exception as e:
+                    results["ddg_error"] = f"DuckDuckGo search failed: {str(e)}"
+                    print(f"DuckDuckGo search error (potentially rate limited): {e}")
+            
+            if sources.lower() in ["wiki", "both"]:
+                try:
+                    wiki_data = self.web_crawler.search_wikipedia(
+                        query, 
+                        include_content=include_wiki_content,
+                        max_sections=max_wiki_sections
+                    )
+                    results["wiki_results"] = wiki_data
+                except Exception as e:
+                    results["wiki_error"] = f"Wikipedia search failed: {str(e)}"
+                    print(f"Wikipedia search error: {e}")
+            
+            # If we got no results but no errors were recorded, add a generic error
+            if not any(k for k in results.keys() if not k.endswith('_error')):
+                results["error"] = "No search results found"
+            
             return results
+        
         except Exception as e:
-            print(f"Error during web crawling: {e}")
-            return {"error": f"Web crawling failed: {str(e)}"}
+            print(f"Error during web search: {e}")
+            return {"error": f"Web search failed: {str(e)}"}
     
     #################################
     # MEDIA GENERATION FUNCTIONS
@@ -125,77 +147,71 @@ class Tools:
     def generate_image(
         self,
         prompt: str,
-        engine: str = "flux",  # "dalle" for OpenAI or "flux" for Replicate
-        aspect_ratio: str = "1:1",
         save_path: Optional[str] = None,
-        model: str = "dall-e-3",  # For OpenAI
-        quality: str = "standard",  # For OpenAI
-        style: str = "vivid",  # For OpenAI
-        size: str = "1024x1024",  # For OpenAI
-        safety_tolerance: int = 2  # For Replicate
+        safety_tolerance: int = 6  # Higher value = less strict
     ) -> str:
         """
-        Generate an image from a text prompt using either OpenAI or Replicate.
+        Generate an image from a text prompt using Replicate's Flux model.
         
         Args:
             prompt: Text description of the desired image
-            engine: Image generation engine ("dalle" for OpenAI or "flux" for Replicate)
-            aspect_ratio: Image aspect ratio (1:1, 16:9, etc.) - used by Replicate
-            save_path: Optional path to save the image
-            model: Model to use (for OpenAI - "dall-e-2" or "dall-e-3")
-            quality: Image quality (for OpenAI - "standard" or "hd")
-            style: Image style (for OpenAI - "vivid" or "natural")
-            size: Image size (for OpenAI - "1024x1024", "1792x1024", "1024x1792")
-            safety_tolerance: Safety level (for Replicate - 0 to 6)
-            
+            save_path: Optional path to save the image (will auto-generate if None)
+            safety_tolerance: Safety level (0 to 6, higher = less strict)
+        
         Returns:
-            Path to the saved image or image URL if not saved
+            str: Either:
+            - Path to the saved image (if save successful)
+            - URL to the generated image (if save failed)
+            - Error message string if generation failed
         """
-        if engine.lower() == "dalle":
-            # Use OpenAI's DALL-E
-            if not self.openai:
-                return "Error: OpenAI API not available"
+        if self.replicate is None or isinstance(self.replicate, DummyAPI):
+            return "Error: Replicate API not available - imports failed"
+        
+        try:
+            # Generate image using Flux
+            print(f"Generating image with Flux using prompt: '{prompt[:50]}{'...' if len(prompt) > 50 else ''}'")
+            response = self.replicate.generate_image(
+                prompt=prompt,
+                aspect_ratio="1:1",  # Default square aspect ratio
+                safety_tolerance=safety_tolerance
+            )
             
+            if not response:
+                raise Exception("Replicate returned empty result")
+            
+            # Handle different types of responses that Replicate might return
+            if hasattr(response, 'url'):
+                image_url = response.url
+            elif isinstance(response, str):
+                image_url = response
+            elif isinstance(response, list) and response:
+                image_url = response[0]
+            else:
+                image_url = str(response)
+            
+            # Set up default save path if not provided
+            if not save_path:
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"image_{timestamp}.jpg"
+                os.makedirs("output/images", exist_ok=True)
+                save_path = os.path.join("output/images", filename)
+            else:
+                # Ensure the directory exists
+                os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            
+            # Download image
             try:
-                # Generate image URL
-                return self.openai.create_image(
-                    prompt=prompt,
-                    model=model,
-                    quality=quality,
-                    style=style,
-                    size=size,
-                    save_path=save_path
-                )
+                from urllib.request import urlretrieve
+                urlretrieve(image_url, save_path)
+                print(f"Image saved to: {save_path}")
+                return save_path
             except Exception as e:
-                print(f"Error generating image with DALL-E: {e}")
-                return f"DALL-E image generation failed: {str(e)}"
-        else:
-            # Use Replicate's Flux
-            if not self.replicate:
-                return "Error: Replicate API not available"
-            
-            try:
-                # Generate image URL
-                image_url = self.replicate.generate_image(
-                    prompt=prompt,
-                    aspect_ratio=aspect_ratio,
-                    safety_tolerance=safety_tolerance
-                )
-                
-                if not image_url:
-                    return "Failed to generate image with Flux"
-                    
-                # Download if save path provided
-                if save_path:
-                    from replicate_API import download_file
-                    downloaded_path = download_file(image_url, output_dir="images", filename=save_path)
-                    return downloaded_path or image_url
-                
+                print(f"Error saving image: {e}")
                 return image_url
-                
-            except Exception as e:
-                print(f"Error generating image with Flux: {e}")
-                return f"Flux image generation failed: {str(e)}"
+            
+        except Exception as e:
+            print(f"Error generating image with Flux: {e}")
+            return f"Image generation failed: {str(e)}"
     
     def generate_music(
         self,
@@ -230,9 +246,18 @@ class Tools:
                 
             # Download if save path provided
             if save_path:
-                from replicate_API import download_file
-                downloaded_path = download_file(music_url, output_dir="music", filename=save_path)
-                return downloaded_path or music_url
+                try:
+                    # Try to use the function from the correctly imported module
+                    if hasattr(self.replicate, 'download_file'):
+                        downloaded_path = self.replicate.download_file(music_url, output_dir="music", filename=save_path)
+                    else:
+                        # Otherwise use the one from the module directly if available 
+                        from I_integrations.replicate_API import download_file
+                        downloaded_path = download_file(music_url, output_dir="music", filename=save_path)
+                    return downloaded_path or music_url
+                except ImportError:
+                    print("Warning: Could not import download_file function")
+                    return music_url
             
             return music_url
             
@@ -623,7 +648,6 @@ class Tools:
         text: str,
         voice: str = "alloy",
         output_path: Optional[str] = None,
-        format: str = "mp3",
         speed: float = 1.0
     ) -> str:
         """
@@ -631,9 +655,8 @@ class Tools:
         
         Args:
             text: Text content to convert to speech
-            voice: Voice to use (alloy, echo, fable, onyx, nova, shimmer)
+            voice: Voice to use (alloy, echo, fable, onyx, nova, shimmer, ash, sage, coral)
             output_path: Path to save the audio file
-            format: Audio format (mp3 or opus)
             speed: Speech speed (0.25 to 4.0)
             
         Returns:
@@ -642,13 +665,18 @@ class Tools:
         if not self.openai:
             return "Error: OpenAI API not available"
         
+        # Validate voice parameter against OpenAI's allowed voices
+        allowed_voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer", "ash", "sage", "coral"]
+        if voice not in allowed_voices:
+            print(f"Warning: '{voice}' is not a valid OpenAI voice. Using 'alloy' instead.")
+            voice = "alloy"
+        
         try:
             # Call OpenAI's text-to-speech API
             audio_path = self.openai.text_to_speech(
                 text=text,
                 voice=voice,
                 output_path=output_path,
-                format=format,
                 speed=speed
             )
             
@@ -718,7 +746,6 @@ if __name__ == "__main__":
         print("12. Get Forecast")
         print("13. Text-to-Speech")
         print("14. Speech-to-Text")
-        print("15. Generate Image (Choose Engine)")
         print("0. Exit")
         
         choice = prompt("Select a tool to demo", "0")
@@ -755,11 +782,25 @@ if __name__ == "__main__":
                 
         elif choice == "3":
             prompt_text = prompt("Enter image description", "A serene landscape with mountains and a lake at sunset")
-            aspect = prompt("Enter aspect ratio", "1:1")
-            engine = prompt("Enter image generation engine (dalle/flux)", "dalle")
-            print("\nGenerating image, please wait...")
-            result = tools.generate_image(prompt_text, engine=engine, aspect_ratio=aspect)
+            print("\nGenerating image with Flux, please wait...")
+            result = tools.generate_image(prompt_text)
             print(f"Result: {result}")
+            
+            # Open the image if saved successfully
+            if os.path.exists(result):
+                try:
+                    if sys.platform == "darwin":  # macOS
+                        # Try QuickLook first
+                        subprocess.run(["qlmanage", "-p", result], 
+                                      stdout=subprocess.DEVNULL, 
+                                      stderr=subprocess.DEVNULL)
+                    elif sys.platform == "win32":  # Windows
+                        os.startfile(result)
+                    else:  # Linux
+                        subprocess.run(["xdg-open", result])
+                    print("Image opened for preview")
+                except Exception as e:
+                    print(f"Couldn't open image for preview: {e}")
             
         elif choice == "4":
             prompt_text = prompt("Enter music description", "Epic orchestral music with soaring strings and dramatic percussion")
@@ -916,44 +957,6 @@ if __name__ == "__main__":
             else:
                 print("\nTranscription:")
                 print(result.get("text", "No text returned"))
-                
-        elif choice == "15":
-            prompt_text = prompt("Enter image description", "A serene landscape with mountains and a lake at sunset")
-            engine = prompt("Choose engine (dalle/flux)", "dalle").lower()
-            
-            if engine == "dalle":
-                model = prompt("Choose model (dall-e-2/dall-e-3)", "dall-e-3")
-                quality = prompt("Choose quality (standard/hd)", "standard")
-                style = prompt("Choose style (vivid/natural)", "vivid")
-                size = prompt("Choose size (1024x1024, 1792x1024, 1024x1792)", "1024x1024")
-                save_path = prompt("Enter filename to save (optional)", "")
-                
-                print("\nGenerating image with DALL-E...")
-                result = tools.generate_image(
-                    prompt=prompt_text,
-                    engine="dalle",
-                    model=model,
-                    quality=quality,
-                    style=style,
-                    size=size,
-                    save_path=save_path if save_path else None
-                )
-            else:
-                aspect = prompt("Enter aspect ratio", "1:1")
-                safety = int(prompt("Enter safety level (0-6)", "2"))
-                save_path = prompt("Enter filename to save (optional)", "")
-                
-                print("\nGenerating image with Flux...")
-                result = tools.generate_image(
-                    prompt=prompt_text,
-                    engine="flux",
-                    aspect_ratio=aspect,
-                    safety_tolerance=safety,
-                    save_path=save_path if save_path else None
-                )
-            
-            print(f"Result: {result}")
-            
         else:
             print("Invalid choice. Please try again.")
         
