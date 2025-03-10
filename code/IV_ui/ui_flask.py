@@ -85,8 +85,20 @@ if not os.path.exists(os.path.join(FAVICON_PATH, 'favicon.png')):
     img = Image.new('RGB', (32, 32), color='black')
     img.save(os.path.join(FAVICON_PATH, 'favicon.png'))
 
-# Initialize agent without keys initially
-ozart_agent = OzartAgent(debug=False)
+# Initialize agent based on environment
+def initialize_ozart_agent():
+    """Initialize OzartAgent based on environment"""
+    is_development = os.getenv('FLASK_ENV') == 'development' or app.debug
+    
+    # Development mode - use env file keys
+    if is_development:
+        return OzartAgent(debug=True)
+    
+    # Production mode - start with no keys, they'll be provided via UI
+    return OzartAgent(debug=False)
+
+# Initialize agent
+ozart_agent = initialize_ozart_agent()
 
 # Thread-safe queues
 processing_queue = queue.Queue()
@@ -126,13 +138,33 @@ def index():
 @app.route('/process', methods=['POST'])
 def process_song():
     """Process song but check for API keys first"""
-    # Check if we have keys - either from session or from logged in user
-    if current_user.is_authenticated:
-        has_openai = bool(current_user.api_keys.get('openai_key') or os.getenv("OPENAI_API_KEY"))
-        has_replicate = bool(current_user.api_keys.get('replicate_key') or os.getenv("REPLICATE_API_TOKEN"))
-    else:
-        has_openai = bool(session.get('openai_key') or os.getenv("OPENAI_API_KEY"))
-        has_replicate = bool(session.get('replicate_key') or os.getenv("REPLICATE_API_TOKEN"))
+    global ozart_agent
+    
+    song_input = request.json.get('song')
+    if not song_input:
+        return jsonify({'error': 'No song provided'})
+
+    is_development = os.getenv('FLASK_ENV') == 'development' or app.debug
+    
+    # Development mode - use env variables
+    if is_development:
+        ozart_agent = OzartAgent(debug=True)
+        thread = threading.Thread(target=process_song_thread, args=(song_input,))
+        thread.daemon = True
+        thread.start()
+        return jsonify({'status': 'processing'})
+
+    # Production mode - check for API keys
+    api_keys = {}
+    
+    if current_user.is_authenticated and current_user.api_keys:
+        api_keys = current_user.api_keys
+    elif session.get('api_keys'):
+        api_keys = session.get('api_keys')
+    
+    # Fallback to environment variables if available
+    has_openai = bool(api_keys.get('openai_key') or os.getenv("OPENAI_API_KEY"))
+    has_replicate = bool(api_keys.get('replicate_key') or os.getenv("REPLICATE_API_TOKEN"))
     
     if not (has_openai and has_replicate):
         return jsonify({
@@ -141,19 +173,12 @@ def process_song():
             'has_replicate': has_replicate
         }), 403
     
-    # Continue with song processing
-    song_input = request.json.get('song')
-    if not song_input:
-        return jsonify({'error': 'No song provided'})
-    
-    # Create agent with session keys if needed
-    global ozart_agent
-    if session.get('openai_key') or session.get('replicate_key'):
-        ozart_agent = OzartAgent(
-            debug=False,
-            openai_api_key=session.get('openai_key'),
-            replicate_api_token=session.get('replicate_key')
-        )
+    # Create agent with appropriate keys
+    ozart_agent = OzartAgent(
+        debug=False,
+        openai_api_key=api_keys.get('openai_key') or os.getenv("OPENAI_API_KEY"),
+        replicate_api_token=api_keys.get('replicate_key') or os.getenv("REPLICATE_API_TOKEN")
+    )
     
     thread = threading.Thread(target=process_song_thread, args=(song_input,))
     thread.daemon = True
@@ -266,8 +291,25 @@ def save_api_keys():
 @app.route('/check-keys')
 def check_keys():
     """Check if API keys are available"""
-    has_openai = bool(session.get('openai_key') or os.getenv("OPENAI_API_KEY"))
-    has_replicate = bool(session.get('replicate_key') or os.getenv("REPLICATE_API_TOKEN"))
+    is_development = os.getenv('FLASK_ENV') == 'development' or app.debug
+    
+    # Development mode - assume keys are available
+    if is_development:
+        return jsonify({
+            'has_openai': True,
+            'has_replicate': True,
+            'keys_required': False
+        })
+    
+    # Production mode - check all possible sources for keys
+    api_keys = {}
+    if current_user.is_authenticated and current_user.api_keys:
+        api_keys = current_user.api_keys
+    elif session.get('api_keys'):
+        api_keys = session.get('api_keys')
+    
+    has_openai = bool(api_keys.get('openai_key') or os.getenv("OPENAI_API_KEY"))
+    has_replicate = bool(api_keys.get('replicate_key') or os.getenv("REPLICATE_API_TOKEN"))
     
     return jsonify({
         'has_openai': has_openai,

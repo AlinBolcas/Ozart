@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # AWS instance details
-AWS_HOST="your-ec2-instance-ip"
-PEM_FILE="path/to/your-key.pem"
+AWS_HOST="3.87.98.212"  # Your actual EC2 public IP
+PEM_FILE="~/.ssh/ozart-key.pem"
 APP_DIR="/home/ubuntu/ozart"
 
 # Make sure pem file has correct permissions
@@ -60,8 +60,8 @@ EOF
     sudo tee /etc/nginx/sites-available/ozart << EOF
 server {
     listen 80;
-    server_name your-domain.com;  # Replace with your domain
-
+    server_name 3.87.98.212;  # Your EC2 public IP
+    
     location / {
         proxy_pass http://127.0.0.1:5001;
         proxy_set_header Host \$host;
