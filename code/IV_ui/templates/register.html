@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-container">
+    <h2>Create Account</h2>
+    
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+    
+    <form method="POST" class="auth-form">
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="confirm_password">Confirm Password</label>
+            <input type="password" id="confirm_password" name="confirm_password" required>
+        </div>
+        
+        <button type="submit" class="btn primary">Register</button>
+    </form>
+    
+    <div class="auth-divider">
+        <span>or</span>
+    </div>
+    
+    <a href="{{ url_for('google_login') }}" class="google-btn">
+        <img src="{{ url_for('static', filename='images/google.svg') }}" alt="Google" width="18" height="18">
+        Continue with Google
+    </a>
+    
+    <p class="auth-footer">
+        Already have an account? <a href="{{ url_for('login') }}">Login</a>
+    </p>
+</div>
+{% endblock %} 

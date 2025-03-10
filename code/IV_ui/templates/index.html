@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ozart</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar first -->
+        <aside class="sidebar">
+            <img src="{{ url_for('static', filename='data/profile_02.jpg') }}" alt="Profile" class="profile-image">
+            <hr>
+            <p class="sidebar-text">
+                I am an autonomous AI artist interpreting songs and transforming them into artworks. 
+                You sharing your song enables me to evolve my aesthetic through each creation exploring 
+                the latent space of possibilities.
+            </p>
+            <hr>
+            <div class="stats">
+                <p class="stat-header">Total Artworks</p>
+                <p class="stat-value" id="sidebar-artwork-count">{{ artwork_count }}</p>
+                <p class="stat-header">Recent Song</p>
+                <p class="stat-value" id="recent-song">{{ recent_title }}</p>
+            </div>
+            
+            <hr>
+            
+            <!-- API Keys section -->
+            <div class="api-keys">
+                <h3>API Keys</h3>
+                
+                <div class="api-field">
+                    <label for="openai-key">OpenAI API Key</label>
+                    <div class="api-input-container">
+                        <input type="password" id="openai-key" placeholder="sk-...">
+                        <a href="https://platform.openai.com/api-keys" target="_blank" class="api-link" title="Get OpenAI API Key">
+                            <span>🔑</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="api-field">
+                    <label for="replicate-key">Replicate API Key</label>
+                    <div class="api-input-container">
+                        <input type="password" id="replicate-key" placeholder="r8_...">
+                        <a href="https://replicate.com/account/api-tokens" target="_blank" class="api-link" title="Get Replicate API Key">
+                            <span>🔑</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <button id="save-keys-btn" onclick="saveApiKeys()">Save Keys</button>
+            </div>
+
+            <!-- Add this inside the sidebar, after the API Keys section -->
+            <hr>
+            <section class="sidebar-section">
+                <h3>Settings</h3>
+                <p>Customize prompts used by Ozart</p>
+                <button class="sidebar-button" onclick="showSettingsModal()">Open Settings</button>
+            </section>
+        </aside>
+        
+        <!-- Main content second -->
+        <main>
+            <!-- Header with cover image -->
+            <header>
+                <img src="{{ url_for('static', filename='data/cover_02.png') }}" alt="Ozart" class="cover-image">
+            </header>
+            
+            <!-- Input section -->
+            <section class="input-section">
+                <h2>Name your song</h2>
+                <div class="input-container">
+                    <input type="text" id="song-input" placeholder="E.g., song name, Spotify link, YouTube link">
+                    <button id="process-btn" onclick="processSong()">Check In</button>
+                </div>
+                <div id="status-message"></div>
+                <div id="error-message"></div>
+            </section>
+            
+            <!-- Gallery section -->
+            <section class="gallery-section">
+                <hr>
+                <p class="artwork-count">Total Artworks: <span id="artwork-count">{{ artwork_count }}</span></p>
+                <div id="artwork-gallery" class="gallery-grid">
+                    {% for artwork in artworks %}
+                    <div class="artwork-details" id="artwork-details-{{loop.index0}}">
+                        <h3>{{artwork.song_title}} - {{artwork.artist}}</h3>
+                        
+                        {% if artwork.audio_path %}
+                        <div class="audio-player">
+                            <audio controls>
+                                <source src="{{ url_for('serve_file', filename=artwork.audio_path) }}" type="audio/wav">
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="artwork-image">
+                            <img src="{{ url_for('serve_file', filename=artwork.image_path) }}" alt="Generated artwork">
+                        </div>
+                        
+                        <div class="artwork-text">
+                            <p><strong>Interpretation:</strong> {{artwork.interpretation}}</p>
+                            <p><strong>Prompt:</strong> {{artwork.prompt}}</p>
+                            <p class="timestamp">Generated: {{artwork.human_time}}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <!-- Add this at the end of the body, before the script tag -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="document.getElementById('settings-modal').style.display='none'">&times;</span>
+            <h2>Customize Generation Prompts</h2>
+            
+            <div class="prompts-grid">
+                <div class="prompt-field">
+                    <label for="music-system-prompt">Music Analysis System Prompt</label>
+                    <textarea id="music-system-prompt" rows="4" placeholder="How the AI should behave when analyzing music..."></textarea>
+                </div>
+                
+                <div class="prompt-field">
+                    <label for="music-user-prompt">Music Analysis User Prompt</label>
+                    <textarea id="music-user-prompt" rows="4" placeholder="How to structure the music analysis..."></textarea>
+                </div>
+                
+                <div class="prompt-field">
+                    <label for="image-system-prompt">Image Generation System Prompt</label>
+                    <textarea id="image-system-prompt" rows="4" placeholder="How the AI should behave when creating image prompts..."></textarea>
+                </div>
+                
+                <div class="prompt-field">
+                    <label for="image-user-prompt">Image Generation User Prompt</label>
+                    <textarea id="image-user-prompt" rows="4" placeholder="How to structure the image generation prompts..."></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <p><small>Available variables: {title}, {artist}, {song_description}</small></p>
+                <button class="btn" onclick="resetDefaultPrompts()">Reset to Defaults</button>
+                <button class="btn primary" onclick="saveSettings()">Save Settings</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html> 

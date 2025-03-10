@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}Ozart{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
+</head>
+<body>
+    <!-- Add navigation bar -->
+    <nav class="nav-bar">
+        <div class="nav-brand">
+            <a href="{{ url_for('index') }}">Ozart</a>
+        </div>
+        <div class="nav-items">
+            {% if current_user.is_authenticated %}
+                <span class="user-email">{{ current_user.email }}</span>
+                <a href="{{ url_for('logout') }}" class="nav-btn">Sign Out</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="nav-btn">Login</a>
+                <a href="{{ url_for('register') }}" class="nav-btn primary">Sign Up</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    {% block content %}{% endblock %}
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html> 
