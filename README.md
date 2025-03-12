@@ -65,11 +65,62 @@ Ozart is being developed in phases:
 
 ## Getting Started
 
-1. Clone the repository
-2. Install required dependencies
-3. Set up API keys for OpenAI, Replicate, and other services
-4. Run the Streamlit interface
-5. Enter song names or URLs to generate artwork
+1. **Clone and Setup**
+```bash
+# Clone the repository
+git clone https://github.com/AlinBolcas/Ozart.git
+cd Ozart
+
+# Create and activate virtual environment
+python -m venv venv
+
+# On Windows:
+venv\Scripts\activate
+
+# On Mac/Linux:
+source venv/bin/activate
+
+# Install requirements
+pip install -r requirements.txt
+```
+
+2. **API Keys Setup**
+Your friend will need to get their own API keys:
+- OpenAI API key from: https://platform.openai.com/api-keys
+- Replicate API key from: https://replicate.com/account/api-tokens
+
+They can enter these keys in two ways:
+- Through the web interface once the app is running
+- Or create a `.env` file in the root directory:
+```
+OPENAI_API_KEY=sk-...
+REPLICATE_API_TOKEN=r8_...
+```
+
+3. **Run the Application**
+```bash
+# Start the Flask server
+python app.py
+```
+
+The website will be available at:
+- http://localhost:5001 (or next available port if 5001 is taken)
+
+4. **Troubleshooting Common Issues**
+If they encounter any errors:
+- Make sure all dependencies are installed: `pip install -r requirements.txt`
+- Check if Python version is 3.8 or higher: `python --version`
+- Ensure API keys are properly set
+- Make sure no other application is using port 5001
+- Check if all required output directories exist (they should be created automatically)
+
+5. **Optional: Development Mode**
+If they want to make changes:
+```bash
+# Set Flask to development mode
+export FLASK_ENV=development  # On Mac/Linux
+set FLASK_ENV=development    # On Windows
+```
 
 ## Examples
 
