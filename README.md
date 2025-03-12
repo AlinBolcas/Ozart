@@ -88,6 +88,10 @@ pip install -r requirements.txt
 Your friend will need to get their own API keys:
 - OpenAI API key from: https://platform.openai.com/api-keys
 - Replicate API key from: https://replicate.com/account/api-tokens
+- Spotify API keys:
+  1. Go to https://developer.spotify.com/dashboard
+  2. Log in or create a Spotify account
+  3. Create a new app to get Client ID and Client Secret
 
 They can enter these keys in two ways:
 - Through the web interface once the app is running
@@ -95,8 +99,8 @@ They can enter these keys in two ways:
 ```
 OPENAI_API_KEY=sk-...
 REPLICATE_API_TOKEN=r8_...
-SPOTIFY_CLIENT_ID=2f2843cf2f3c4149b250851a8d0e745b
-SPOTIFY_CLIENT_SECRET=017d3aa1523e4c508c6f9021a5da67c1
+SPOTIFY_CLIENT_ID=2f...
+SPOTIFY_CLIENT_SECRET=017..
 ```
 
 3. **Run the Application**
