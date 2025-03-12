@@ -95,6 +95,8 @@ They can enter these keys in two ways:
 ```
 OPENAI_API_KEY=sk-...
 REPLICATE_API_TOKEN=r8_...
+SPOTIFY_CLIENT_ID=2f2843cf2f3c4149b250851a8d0e745b
+SPOTIFY_CLIENT_SECRET=017d3aa1523e4c508c6f9021a5da67c1
 ```
 
 3. **Run the Application**

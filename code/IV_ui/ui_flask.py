@@ -113,9 +113,11 @@ def process_song():
     if not song_input:
         return jsonify({'error': 'No song provided'})
     
+    # Start processing in background thread without any key checks
     thread = threading.Thread(target=process_song_thread, args=(song_input,))
     thread.daemon = True
     thread.start()
+    
     return jsonify({'status': 'processing'})
 
 @app.route('/status')
@@ -203,25 +205,21 @@ def process_song_thread(song_input):
         except queue.Empty:
             pass
 
-@app.route('/save-keys', methods=['POST'])
-def save_api_keys():
-    """Save API keys to session"""
-    data = request.json
-    keys = {
-        'openai_key': data.get('openai_key'),
-        'replicate_key': data.get('replicate_key')
-    }
-    session['api_keys'] = keys
-    return jsonify({'success': True})
-
 @app.route('/check-keys')
 def check_keys():
     """Check if API keys are available"""
+    # Always return true to bypass key input requirement
     return jsonify({
         'has_openai': True,
         'has_replicate': True,
         'keys_required': False
     })
+
+@app.route('/save-keys', methods=['POST'])
+def save_api_keys():
+    """Save API keys to session"""
+    # Just return success without saving to session
+    return jsonify({'success': True})
 
 @app.route('/get-prompts')
 def get_prompts():

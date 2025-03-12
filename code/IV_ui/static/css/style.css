@@ -61,6 +61,39 @@ main {
     box-sizing: border-box;
 }
 
+/* Gallery grid */
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    width: 100%;
+}
+
+.artwork {
+    background-color: var(--secondary-background);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    transition: transform 0.2s;
+}
+
+.artwork-image {
+    width: 100%;
+    height: 0;
+    padding-bottom: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.artwork-image img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 .profile-image {
     width: 100%;
     border-radius: 5px;
@@ -675,4 +708,31 @@ details summary:hover {
 #api-keys-success {
     margin-bottom: 15px;
     font-size: 14px;
+}
+
+.prompt {
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+.prompt pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 10px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+    max-height: none;
+    overflow: visible;
+    color: var(--text-color);
+}
+
+.details-content {
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    margin-top: 10px;
+    overflow: visible;
+    max-height: none;
 } 

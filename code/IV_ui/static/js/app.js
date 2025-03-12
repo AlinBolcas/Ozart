@@ -1,4 +1,5 @@
 let isProcessing = false;
+let pollInterval = null;
 
 async function processSong() {
     const input = document.getElementById('song-input');
@@ -9,15 +10,6 @@ async function processSong() {
     
     // Get the application prefix 
     const prefix = window.APP_CONFIG ? APP_CONFIG.prefix : '';
-    
-    // Get API key values directly from inputs
-    const openaiKey = document.getElementById('openai-key').value;
-    const replicateKey = document.getElementById('replicate-key').value;
-    
-    if (!openaiKey || !replicateKey) {
-        status.innerHTML = '<div class="error">⚠️ Please add both API keys before processing songs.</div>';
-        return;
-    }
     
     btn.disabled = true;
     isProcessing = true;
@@ -34,259 +26,155 @@ async function processSong() {
             })
         });
 
-        if (!response.ok) {
-            throw new Error('Failed to process song');
-        }
-        
         // Start polling for updates
         pollStatus();
         
     } catch (error) {
-        showError(error);
-        btn.disabled = false;
-        isProcessing = false;
+        console.log('Error:', error);
+        // Even if there's an error, try polling anyway
+        pollStatus();
     }
 }
 
-async function pollStatus() {
-    if (!isProcessing) return;
-    
-    // Get the application prefix
-    const prefix = window.APP_CONFIG ? APP_CONFIG.prefix : '';
-    
-    try {
-        const response = await fetch(`${prefix}/status`);
-        const data = await response.json();
-        
-        // Update counts
-        document.getElementById('artwork-count').textContent = data.artwork_count;
-        document.getElementById('sidebar-artwork-count').textContent = data.artwork_count;
-        
-        // Show any errors
-        if (data.errors && data.errors.length > 0) {
-            showError(data.errors[0]);
-        }
-        
-        // Update gallery
-        if (data.artworks && data.artworks.length > 0) {
-            updateGallery(data.artworks);
-        }
-        
-        // Continue polling if still processing
-        if (data.processing) {
-            setTimeout(pollStatus, 2000);
-        } else {
-            isProcessing = false;
-            document.getElementById('process-btn').disabled = false;
-            document.getElementById('status-message').innerHTML = '';
-            document.getElementById('song-input').value = '';
-        }
-        
-    } catch (error) {
-        console.error('Polling error:', error);
-        showError(error);
-        isProcessing = false;
-        document.getElementById('process-btn').disabled = false;
+function pollStatus() {
+    // Clear any existing interval
+    if (pollInterval) {
+        clearInterval(pollInterval);
     }
+    
+    // Set up a new polling interval
+    pollInterval = setInterval(() => {
+        fetch('/status')
+            .then(response => response.json())
+            .then(data => {
+                // Update artwork count
+                document.getElementById('artwork-count').textContent = data.artwork_count;
+                document.getElementById('sidebar-artwork-count').textContent = data.artwork_count;
+                
+                // Update gallery if we have artworks
+                if (data.artworks && data.artworks.length > 0) {
+                    updateGallery(data.artworks);
+                    // Update recent song
+                    document.getElementById('recent-song').textContent = data.artworks[0].song_title;
+                }
+                
+                // Stop polling if processing is complete
+                if (!data.processing) {
+                    isProcessing = false;
+                    document.getElementById('process-btn').disabled = false;
+                    document.getElementById('status-message').innerHTML = '';
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                }
+            })
+            .catch(error => {
+                console.log('Polling error:', error);
+                // Keep polling even if there's an error
+            });
+    }, 2000); // Poll every 2 seconds
 }
 
 function updateGallery(artworks) {
-    console.log("Updating gallery with artworks:", artworks);
     const gallery = document.getElementById('artwork-gallery');
+    gallery.innerHTML = ''; // Clear existing artworks
     
-    if (!artworks || artworks.length === 0) {
-        gallery.innerHTML = '<p>No artworks available yet.</p>';
-        return;
-    }
-    
-    gallery.innerHTML = artworks.map(artwork => {
-        console.log("Processing artwork:", artwork);
-        
-        // Get the application prefix
-        const prefix = window.APP_CONFIG ? APP_CONFIG.prefix : '';
-        
-        // Make sure image path is properly formatted
-        let imageUrl;
-        if (!artwork.image_path) {
-            imageUrl = `${prefix}/static/data/fallback.png`;
-        } else {
-            // Always use /output/ prefix for artwork images
-            imageUrl = `${prefix}/output/${artwork.image_path}`;
-        }
-        
-        console.log("Image URL:", imageUrl);
-        
-        return `
-            <div class="artwork-card">
-                <img src="${imageUrl}" alt="${artwork.song_title || 'Untitled'}" 
-                     onerror="this.onerror=null; this.src='/static/data/fallback.png'">
-                <div class="artwork-info">
-                    <h3>${artwork.song_title || 'Untitled'}</h3>
-                    <p>${artwork.artist || 'Unknown artist'}</p>
-                    <details>
-                        <summary>Show Details</summary>
-                        <div class="artwork-details">
-                            <h4>Song Analysis</h4>
-                            <p>${artwork.interpretation || 'No analysis available'}</p>
-                            <h4>Image Prompt</h4>
-                            <p><code>${artwork.prompt || 'No prompt available'}</code></p>
-                            ${artwork.audio_path ? `
-                                <h4>Listen to the song</h4>
-                                <audio controls src="/output/${artwork.audio_path}"></audio>
-                            ` : ''}
-                            <p><small>Created: ${artwork.human_time || 'Unknown time'}</small></p>
-                        </div>
-                    </details>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-function showError(error) {
-    const errorDiv = document.getElementById('error-message');
-    errorDiv.textContent = `Error: ${error}`;
-    errorDiv.style.display = 'block';
-    setTimeout(() => {
-        errorDiv.style.display = 'none';
-    }, 5000);
-}
-
-function showSettingsModal() {
-    // Fetch current prompts
-    loadPrompts();
-    
-    // Show modal
-    document.getElementById('settings-modal').style.display = 'block';
-}
-
-async function loadPrompts() {
-    try {
-        const response = await fetch('/get-prompts');
-        const data = await response.json();
-        
-        if (data.success) {
-            // Fill the form fields
-            document.getElementById('music-system-prompt').value = data.prompts.music_analysis_system_prompt || '';
-            document.getElementById('music-user-prompt').value = data.prompts.music_analysis_user_prompt || '';
-            document.getElementById('image-system-prompt').value = data.prompts.image_prompt_system_prompt || '';
-            document.getElementById('image-user-prompt').value = data.prompts.image_prompt_user_prompt || '';
-        } else {
-            showError(data.error || 'Failed to load prompts');
-        }
-    } catch (error) {
-        console.error('Error loading prompts:', error);
-        showError('Failed to load prompts');
-    }
-}
-
-async function resetDefaultPrompts() {
-    // Clear session storage for prompts to revert to defaults
-    try {
-        await fetch('/save-prompts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({}) // Empty object to clear custom prompts
-        });
-        
-        // Reload prompts from defaults
-        loadPrompts();
-        showMessage('Prompts reset to defaults', 'success');
-    } catch (error) {
-        console.error('Error resetting prompts:', error);
-        showError('Failed to reset prompts');
-    }
-}
-
-async function saveSettings() {
-    // Save both API keys and prompts
-    try {
-        // Save API keys
-        const openaiKey = document.getElementById('openai-key').value;
-        const replicateKey = document.getElementById('replicate-key').value;
-        
-        if (openaiKey || replicateKey) {
-            await saveApiKeys(openaiKey, replicateKey);
-        }
-        
-        // Save prompts
-        const musicSystemPrompt = document.getElementById('music-system-prompt').value;
-        const musicUserPrompt = document.getElementById('music-user-prompt').value;
-        const imageSystemPrompt = document.getElementById('image-system-prompt').value;
-        const imageUserPrompt = document.getElementById('image-user-prompt').value;
-        
-        const promptResponse = await fetch('/save-prompts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                music_analysis_system_prompt: musicSystemPrompt,
-                music_analysis_user_prompt: musicUserPrompt,
-                image_prompt_system_prompt: imageSystemPrompt,
-                image_prompt_user_prompt: imageUserPrompt
-            })
-        });
-        
-        const promptData = await promptResponse.json();
-        
-        if (promptData.success) {
-            showMessage('Settings saved successfully!', 'success');
-            document.getElementById('settings-modal').style.display = 'none';
-        } else {
-            showError('Failed to save prompts');
-        }
-    } catch (error) {
-        console.error('Error saving settings:', error);
-        showError('Failed to save settings');
-    }
-}
-
-async function saveApiKeys(openaiKey, replicateKey) {
-    const response = await fetch('/save-keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            openai_key: openaiKey,
-            replicate_key: replicateKey
-        })
+    artworks.forEach(artwork => {
+        const artworkElement = createArtworkElement(artwork);
+        gallery.appendChild(artworkElement);
     });
-    
-    const data = await response.json();
-    if (!data.success) {
-        throw new Error('Failed to save API keys');
-    }
 }
 
-function openTab(evt, tabName) {
-    // Hide all tab content
-    const tabContent = document.getElementsByClassName('tab-content');
-    for (let i = 0; i < tabContent.length; i++) {
-        tabContent[i].style.display = 'none';
+function createArtworkElement(artwork) {
+    const article = document.createElement('article');
+    article.className = 'artwork';
+    
+    // Create image container
+    const imgContainer = document.createElement('div');
+    imgContainer.className = 'artwork-image';
+    
+    // Create and set image
+    const img = document.createElement('img');
+    img.src = `/output/${artwork.image_path}`;
+    img.alt = artwork.song_title;
+    imgContainer.appendChild(img);
+    
+    // Create details container
+    const details = document.createElement('div');
+    details.className = 'artwork-details';
+    
+    // Add expand button
+    const expandBtn = document.createElement('button');
+    expandBtn.className = 'expand-btn';
+    expandBtn.textContent = 'Show Details';
+    expandBtn.onclick = () => toggleDetails(details);
+    
+    // Create details content
+    const detailsContent = document.createElement('div');
+    detailsContent.className = 'details-content';
+    detailsContent.style.display = 'none';
+    
+    // Add song title and artist
+    const title = document.createElement('h3');
+    title.textContent = `${artwork.song_title} by ${artwork.artist}`;
+    detailsContent.appendChild(title);
+    
+    // Add audio player if available
+    if (artwork.audio_path) {
+        const audio = document.createElement('audio');
+        audio.controls = true;
+        audio.src = `/output/${artwork.audio_path}`;
+        detailsContent.appendChild(audio);
     }
     
-    // Remove 'active' class from all tab buttons
-    const tabButtons = document.getElementsByClassName('tab-btn');
-    for (let i = 0; i < tabButtons.length; i++) {
-        tabButtons[i].className = tabButtons[i].className.replace(' active', '');
+    // Add interpretation
+    if (artwork.interpretation) {
+        const interpretation = document.createElement('div');
+        interpretation.className = 'interpretation';
+        interpretation.innerHTML = `<h4>Analysis</h4><p>${artwork.interpretation}</p>`;
+        detailsContent.appendChild(interpretation);
     }
     
-    // Show current tab and add 'active' class to button
-    document.getElementById(tabName).style.display = 'block';
-    evt.currentTarget.className += ' active';
+    // Add prompt
+    if (artwork.prompt) {
+        const prompt = document.createElement('div');
+        prompt.className = 'prompt';
+        prompt.innerHTML = `<h4>Image Prompt</h4><pre>${artwork.prompt}</pre>`;
+        detailsContent.appendChild(prompt);
+    }
+    
+    // Add creation time
+    const time = document.createElement('p');
+    time.className = 'creation-time';
+    time.textContent = `Created: ${artwork.human_time}`;
+    detailsContent.appendChild(time);
+    
+    // Assemble the details section
+    details.appendChild(expandBtn);
+    details.appendChild(detailsContent);
+    
+    // Assemble the article
+    article.appendChild(imgContainer);
+    article.appendChild(details);
+    
+    return article;
+}
+
+function toggleDetails(detailsElement) {
+    const content = detailsElement.querySelector('.details-content');
+    const button = detailsElement.querySelector('.expand-btn');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        button.textContent = 'Hide Details';
+    } else {
+        content.style.display = 'none';
+        button.textContent = 'Show Details';
+    }
 }
 
 // Load initial artworks when page loads
 window.addEventListener('load', async () => {
     try {
-        // Check API key status
-        const keyResponse = await fetch('/check-keys');
-        const keyData = await keyResponse.json();
-        
-        if (keyData.keys_required) {
-            // Show API key form if keys are missing
-            document.getElementById('api-key-modal').style.display = 'block';
-            showMessage('Please enter your API keys to continue', 'info');
-        }
-        
         // Get artworks as before
         const response = await fetch('/status');
         const data = await response.json();

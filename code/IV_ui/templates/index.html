@@ -259,6 +259,36 @@
                 }
             });
         });
+
+        function processSong() {
+            const songInput = document.getElementById('song-input').value;
+            if (!songInput) {
+                alert('Please enter a song name or URL');
+                return;
+            }
+
+            // Process song without any API key validation
+            fetch('/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ song: songInput })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    document.getElementById('song-input').value = '';
+                    startPolling();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error processing song');
+            });
+        }
     </script>
     <script src="{{ url_prefix }}{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
